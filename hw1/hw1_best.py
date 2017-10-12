@@ -27,13 +27,11 @@ Variable_list = np.r_[
                      # 144,145,146,147,148,149,150,151,152,
                      # 153,154,155,156,157,158,159,160,161
                      ]
-l_rate = 10
-repeat = 10000
-#train_path = 'C:/Users/TappyHsieh/Desktop/train.csv'
+
 test_path = sys.argv[1] #'C:/Users/TappyHsieh/Desktop/test.csv'
-filename = sys.argv[2]  #"C:/Users/TappyHsieh/Desktop/predictdata.csv"
+filename = sys.argv[2] #"C:/Users/TappyHsieh/Desktop/predictdata.csv" 
 # read model
-w = np.load('model.npy')
+w = np.load('model_best.npy')
 
 test_x = []
 n_row = 0

@@ -28,20 +28,21 @@ Variable_list = np.r_[
                      # 153,154,155,156,157,158,159,160,161
                      ]
 
-train_path = sys.argv[1] #'C:/Users/TappyHsieh/Desktop/train.csv' #'/home/tappy/train.csv'  #
-#test_path = 'C:/Users/TappyHsieh/Desktop/test.csv'
-filename =  sys.argv[2] #"C:/Users/TappyHsieh/Desktop/predictdata.csv"# '/home/tappy/predictdata.csv'  #
+train_path = sys.argv[1] #'C:/Users/TappyHsieh/Desktop/train.csv' #'/home/tappy/train.csv' 
+# test_path = 'C:/Users/TappyHsieh/Desktop/test.csv'
+# filename = sys.argv[2] #"C:/Users/TappyHsieh/Desktop/predictdata.csv" # '/home/tappy/predictdata.csv'  #
+
 def main():
     l_rate = 10
-    repeat = 10000
-    # Lambda = 0.001
+    repeat = 12000
+    Lambda = 0.005
     
     
     data = []
     for i in range(18):
         data.append([])
     n_row = 0
-    text = open(train_path, 'r')#, encoding='big5')
+    text = open(train_path, 'r' )#, encoding='big5')
     row = csv.reader(text , delimiter=",")
     for r in row:
         if n_row != 0:
@@ -61,17 +62,14 @@ def main():
                 for s in range(9):
                     x[471*i+j].append(data[t][480*i+j+s] )
             y.append(data[9][480*i+j+9])
-    
     x = np.array(x)
     y = np.array(y)
-    
     # pick Variable
     X = [1] * len(x)
     for row in range(len(x)):
         X[row] = x[row][Variable_list]
     x = np.array(X)
-    
-    
+
     '''
     x_transpose = list(map(list, zip(*x)))
     Varlist = []
@@ -93,7 +91,7 @@ def main():
     s_gra = np.zeros(len(x[0]))
     for i in range(repeat):
         hypo = np.dot(x, w)
-        loss = hypo - y # + Lambda * np.sum(w**2)
+        loss = hypo - y  + Lambda * np.sum(w**2)
         cost = np.sum(loss**2) / len(x)
         cost_a = math.sqrt(cost)
         gra = np.dot(x_t, loss)
@@ -102,9 +100,8 @@ def main():
         w = w - l_rate * gra / ada
         if i%100==0:
         	print ('iteration: %d | Cost: %f ' % (i, cost_a))
-    
     # save model
-    np.save('model.npy',w)
+    np.save('model_best.npy',w)
 
 if __name__ == '__main__':
     main()
