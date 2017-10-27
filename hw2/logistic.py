@@ -72,7 +72,7 @@ def train(X_all, Y_all, save_dir):
     w = np.zeros((106,))
     b = np.zeros((1,))
     l_rate = 0.001
-    batch_size = 40
+    batch_size = 32
     train_data_size = len(X_train)
     step_num = int(floor(train_data_size / batch_size))
     epoch_num = 1000
