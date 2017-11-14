@@ -38,7 +38,6 @@ label_path = "C:/Users/user/Desktop/feature/label.npy"
 feature_test_path = "C:/Users/user/Desktop/feature/feature_test.npy"
 
 
-
 test_data = []   # 7178
 test_y = []      # 7178
 train_data = []  # 28791
@@ -67,6 +66,7 @@ X = np.load(feature_path)
 y = np.load(label_path)
 X_test = np.load(feature_test_path)
 
+
 def build_model():
     input_img = Input(shape=(48, 48, 1))
     block1 = Conv2D(64, (5, 5), padding='valid', activation='relu')(input_img)
@@ -76,33 +76,35 @@ def build_model():
     block2 = Conv2D(64, (3, 3), activation='relu')(block1)
     block2 = ZeroPadding2D(padding=(1, 1), data_format='channels_last')(block2)
 
-    block3 = Conv2D(64, (3, 3), activation='relu')(block2)
+    block3 = Conv2D(128, (5, 5), activation='relu')(block2)
     block3 = AveragePooling2D(pool_size=(3, 3), strides=(2, 2))(block3)
     block3 = ZeroPadding2D(padding=(1, 1), data_format='channels_last')(block3)
-    block4 = Conv2D(128, (3, 3), activation='relu')(block3)
+    block4 = Conv2D(64, (3, 3), activation='relu')(block3)
 
     block4 = ZeroPadding2D(padding=(1, 1), data_format='channels_last')(block4)
-    block5 = Conv2D(128, (3, 3), activation='relu')(block4)
-
+    block5 = Conv2D(128, (5, 5), activation='relu')(block4)
+    block5 = AveragePooling2D(pool_size=(3, 3), strides=(1, 1))(block5)
     block5 = ZeroPadding2D(padding=(1, 1), data_format='channels_last')(block5)
     block5 = AveragePooling2D(pool_size=(3, 3), strides=(2, 2))(block5)
 
     block5 = Flatten()(block5)
-    fc1 = Dense(512, activation='relu')(block5)
+    fc1 = Dense(1024, activation='sigmoid')(block5)
     fc1 = Dropout(0.5)(fc1)
-    fc2 = Dense(512, activation='relu')(fc1)
+    fc2 = Dense(512, activation='softmax')(fc1)
     fc2 = Dropout(0.5)(fc2)
-    fc3 = Dense(512, activation='relu')(fc1)
-    fc3 = Dropout(0.5)(fc2)
-    predict = Dense(7)(fc2)
+    fc3 = Dense(512, activation='sigmoid')(fc2)
+    fc3 = Dropout(0.3)(fc3)
+    predict = Dense(7)(fc3)
     predict = Activation('softmax')(predict)
     model = Model(inputs=input_img, outputs=predict)
     # opt = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
     opt = Adam(lr=1e-3)
     # opt = Adadelta(lr=0.1, rho=0.95, epsilon=1e-08)
-    model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=opt, metrics=['accuracy'])
     model.summary()
     return model
+
 
 X = X.astype('float32')
 X /= 255
@@ -143,7 +145,7 @@ model.compile(loss='categorical_crossentropy',optimizer='adam', metrics=['accura
 '''
 model = build_model()
 model.fit(X, y,
-          batch_size=300, epochs=50,
+          batch_size=500, epochs=150,
           verbose=1, validation_split=0.1, class_weight='auto')
 
 
@@ -158,9 +160,9 @@ for row in range(len(preds)):
 
 text = open(filename, "w+")
 s = csv.writer(text, delimiter=',', lineterminator='\n')
-s.writerow(["id","label"])
+s.writerow(["id", "label"])
 for i in range(len(result)):
-    s.writerow([i,result[i]])
+    s.writerow([i, result[i]])
 
 text.close()
 
