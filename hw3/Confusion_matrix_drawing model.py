@@ -16,6 +16,14 @@ from keras.optimizers import Adam
 from keras import regularizers
 from keras.layers import Conv2D, MaxPooling2D, ThresholdedReLU, LeakyReLU, AveragePooling2D, ZeroPadding2D
 
+import matplotlib.pyplot as plt
+from keras.models import load_model
+from sklearn.metrics import confusion_matrix
+from utils import *
+import itertools
+
+
+
 #### Set file path
 
 train_path = 'C:/Users/user/Desktop/train.csv'
@@ -92,23 +100,18 @@ model.add(Activation('softmax'))
 model.compile(loss='categorical_crossentropy',optimizer='adam', metrics=['accuracy'])
 
 model.summary()
-model.fit(train_X, train_Y, batch_size=500,
-          epochs=100, verbose=1, class_weight='auto')
-model.save('Model_seperate_Training_Testing_3559431_par.h5')
 
+train_history = model.fit(train_X, train_Y, batch_size=500,
+                          epochs=120, validation_split=0.1, verbose=1, class_weight='auto')
+
+show_train_history(train_history, 'acc', 'val_acc')
+show_train_history(train_history, 'loss', 'val_loss')
+
+model.save('Model_seperate_Training_Testing_3559431_par.h5')
 model = load_model('Model_seperate_Training_Testing_3559431_par.h5')
 self_preds = model.predict(test_X)
 self_preds = self_preds.argmax(axis=-1)
 label_array = test_Y.argmax(axis=-1)
-
-
-from keras.models import load_model
-from sklearn.metrics import confusion_matrix
-from utils import *
-import itertools
-import numpy as np
-import matplotlib.pyplot as plt
-
 
 def plot_confusion_matrix(cm, classes, title='Confusion matrix', cmap=plt.cm.jet):
     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
@@ -133,3 +136,11 @@ plt.figure()
 plot_confusion_matrix(conf_mat, classes=["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"])
 plt.show()
 
+def show_train_history(train_history,train,validation):
+    plt.plot(train_history.history[train])
+    plt.plot(train_history.history[validation])
+    plt.title( 'Train History' )
+    plt.ylabel(train)
+    plt.xlabel('Epoch')
+    plt.legend(['train', 'validation'], loc='upper left')
+    plt.show()
