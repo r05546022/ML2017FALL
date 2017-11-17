@@ -21,22 +21,17 @@ test_path = sys.argv[1]
 print(" test path : ", test_path)
 filename = sys.argv[2]
 print(" filename path : ", filename)
-#wget https://github.com/r05546022/ML2017FALL/releases/download/0.0.1/Model.h5
 
 # Read testing data
 df = pd.read_csv(test_path)
 X_test = df['feature'].as_matrix()
-X_test = np.array([np.array([*map(int, x.split())]).reshape(48, 48) for x in X_test])
+X_test = np.array([np.array([*map(int, x.split())]).reshape(48, 48)
+                for x in X_test])
 X_test = X_test.astype('float32')
 X_test /= 255
 X_test = X_test.reshape(len(X_test), 48, 48, 1)
-try:
-    model = load_model('Model.h5')
-    print("model downloaded and imported")
-except:
-    os.system('wget https://github.com/r05546022/ML2017FALL/releases/download/0.0.1/Model.h5')
-    model = load_model('Model.h5')
-
+model = load_model('Model.h5')
+print("model downloaded and imported")
 preds = model.predict(X_test)
 
 result = []
