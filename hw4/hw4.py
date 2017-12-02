@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import csv
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -12,18 +11,18 @@ from keras.layers import LSTM, TimeDistributed, Bidirectional
 from keras.layers.core import Activation, Dense, Dropout, Flatten
 from keras.layers.embeddings import Embedding
 from keras.models import Model, Sequential, load_model
-from keras.optimizers import SGD, Adam
+from keras.optimizers import Adam
 from keras.preprocessing import sequence
 from keras.preprocessing.text import *
-from sklearn.model_selection import train_test_split
+from gensim.models import word2vec, Word2Vec
 
 MAX_SEQUENCE_LENGTH = 40
 MAX_NB_WORDS = 20000
-EMBEDDING_DIM = 100
+EMBEDDING_DIM = 240
 VALIDATION_SPLIT = 0.2
 
-batchsize = 500
-num_epoch = 4
+batchsize = 1024
+num_epoch = 20
 
 ####################
 training_label = 'c:/Users/user/Desktop/training_label.txt'
@@ -38,6 +37,9 @@ test_text_path = 'c:/Users/user/Desktop/feature/test_text.npy'
 predict_path = 'c:/Users/user/Desktop/result/predict.csv'
 filepath = "c:/Users/user/Desktop/weight/weights-improvement-{epoch:02d}-{val_acc:.3f}.hdf5"
 good_incidence_path = 'c:/Users/user/Desktop/feature/good_incidence.npy'
+W2Vmodel_path = 'C:/Users/user/Desktop/skipgram_'
+
+
 ####################
 
 
@@ -63,7 +65,7 @@ def load(readnpy=False):
                 np.save('./feature/train_text.npy', train_text)
             '''
         test_text = [line.strip() for line in open(
-            './training_nolabel.txt', "U", encoding='utf-8-sig')]
+                './training_nolabel.txt', "U", encoding='utf-8-sig')]
         np.save('./feature/test_text.npy', test_text)
     return y_train, train_text, test_text
 
@@ -77,9 +79,9 @@ def load_data(training_label, training_nolabel, testing):
             y_train.append(l.strip().split("+++$+++")[0])
             train_text.append(l.strip().split("+++$+++")[1])
     valid_text = [line.strip() for line in open(
-        training_nolabel, "r", encoding='utf-8-sig')]
+            training_nolabel, "r", encoding='utf-8-sig')]
     test_text = [line.strip().split(',', 1)[1] for line in open(
-        testing, "r", encoding='utf-8-sig')][1::]
+            testing, "r", encoding='utf-8-sig')][1::]
     return y_train, train_text, valid_text, test_text
 
 
@@ -93,14 +95,6 @@ def show_train_history(train_history, train, validation):
     plt.show()
 
 
-def predict_review(input_text):
-    input_seq = token.texts_to_sequences([input_text])
-    pad_input_seq = sequence.pad_sequences(
-        input_seq, maxlen=NEW_MAX_SEQUENCE_LENGTH)
-    predict_result = model.predict_classes(pad_input_seq)
-    print(SentimentDict[predict_result[0][0]])
-
-
 def savemodel(model, path):
     model.save_weights(path)
     print("Saved model to disk")
@@ -108,12 +102,11 @@ def savemodel(model, path):
 
 def buildmodel():
     model = Sequential()
-    model.add(Embedding(output_dim=64,
-                        input_dim=MAX_NB_WORDS,
-                        input_length=MAX_SEQUENCE_LENGTH))
-    model.add(Bidirectional(LSTM(128, return_sequences=True)))
-    model.add(Bidirectional(LSTM(128)))
-    model.add(Dropout(0.2))
+    model.add(Embedding(len(embeddings_matrix), EMBEDDING_DIM,
+                        weights=[embeddings_matrix], trainable=False))
+    # model.add(Bidirectional(LSTM(128, return_sequences=True)))
+    model.add(Bidirectional(LSTM(256)))
+    model.add(Dropout(0.5))
     model.add(Dense(units=1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy',
                   optimizer=Adam(lr=1e-3), metrics=['accuracy'])
@@ -121,119 +114,88 @@ def buildmodel():
     return model
 
 
-'''
-    y_train, train_text, valid_text, test_text = load_data(training_label,  training_nolabel,testing)
-    np.save(train_text_path, train_text)
-    np.save(y_train_path, y_train)
-    np.save(valid_text_path, valid_text)
-    np.save(test_text_path, test_text)
-'''
-
-train_text = np.load(train_text_path)
-y_train = np.load(y_train_path)
-valid_text = np.load(valid_text_path)
-test_text = np.load(test_text_path)
-
-token = Tokenizer(num_words=MAX_NB_WORDS,
-                  filters='×ð!"#$%&()*+,-./:;<=>?@[\]^_`{|}~\t\n'"'", split=" ")
-
-token.fit_on_texts(np.concatenate([train_text, valid_text, test_text]))
-
-'''
-    Z = [text_to_word_sequence(R, filters='123456789qwertyuiopasdfghjklzxcvbnm!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', split=" ")     for R in valid_text]
-    Q = []
-    for i in range(len(Z)):
-        Q = Q + Z[i]
-        print(i)
-
-    QQQ=text_to_word_sequence(str(QQ), filters='\"\'')
-    QQQQ = text_to_word_sequence(str(QQ), filters="\",'")
-    QQQQ.split()
-'''
+def Set_Data(readnpy=False):
+    if readnpy:
+        y_train, train_text, valid_text, test_text = load_data(
+                training_label, training_nolabel, testing)
+        np.save(train_text_path, train_text)
+        np.save(y_train_path, y_train)
+        np.save(valid_text_path, valid_text)
+        np.save(test_text_path, test_text)
+    else:
+        train_text = np.load(train_text_path)
+        y_train = np.load(y_train_path)
+        valid_text = np.load(valid_text_path)
+        test_text = np.load(test_text_path)
+    return train_text, y_train, valid_text, test_text
 
 
-def preprocess(text):
-    text_seq = token.texts_to_sequences(text)
-    print(max(text_seq, key=len))
-    texting = sequence.pad_sequences(text_seq, maxlen=MAX_SEQUENCE_LENGTH)
-    return texting
+def Set_W2V_model():
+    documents = np.concatenate([train_text, valid_text, test_text])
+    sentences = [text_to_word_sequence(s, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~\t\n', lower=True, split=" ") for s in
+                 documents.tolist()]
+    W2Vmodel = Word2Vec(sentences, sg=1, size=EMBEDDING_DIM,
+                        window=5, min_count=5, workers=8)
+    W2Vmodel.save(W2Vmodel_path)
 
 
-x_train = preprocess(train_text)
-x_test = preprocess(test_text)
-x_valid = preprocess(valid_text)
+def index_array(X, max_length, EMBEDDING_DIM):
+    return np.concatenate([[word2idx.get('_PAD') if word2idx.get(x) is None else word2idx.get(x) for x in X],
+                           np.zeros((max_length - len(X)))])
+
+
+def write_result(prediction=prediction, predict_path=predict_path):
+    text = open(predict_path, "w+")
+    s = csv.writer(text, delimiter=',', lineterminator='\n')
+    s.writerow(["id", "label"])
+    for i in range(len(prediction)):
+        s.writerow([i, prediction[i][0]])
+    text.close()
+
+
+train_text, y_train, valid_text, test_text = Set_Data()
+Set_W2V_model()
+
+W2Vmodel = Word2Vec.load(W2Vmodel_path)
+word2idx = {"_PAD": 0}
+vocab_list = [(k, W2Vmodel.wv[k]) for k, v in W2Vmodel.wv.vocab.items()]
+embeddings_matrix = np.zeros(
+        (len(W2Vmodel.wv.vocab.items()) + 1, W2Vmodel.vector_size))
+
+for i in range(len(vocab_list)):
+    word = vocab_list[i][0]
+    word2idx[word] = i + 1
+    embeddings_matrix[i + 1] = vocab_list[i][1]
+
+train_list = [text_to_word_sequence(s, filters='×ð!"#$%&()*+,-./:;<=>?@[\]^_`{|}~\t\n', lower=True, split=" ") for s in
+              train_text]
+test_list = [text_to_word_sequence(s, filters='×ð!"#$%&()*+,-./:;<=>?@[\]^_`{|}~\t\n', lower=True, split=" ") for s in
+             test_text]
+valid_list = [text_to_word_sequence(s, filters='×ð!"#$%&()*+,-./:;<=>?@[\]^_`{|}~\t\n', lower=True, split=" ") for s in
+              valid_text]
+
+train_vec = np.array(
+        [index_array(x, MAX_SEQUENCE_LENGTH, EMBEDDING_DIM) for x in train_list])
+test_vec = np.array(
+        [index_array(x, MAX_SEQUENCE_LENGTH, EMBEDDING_DIM) for x in test_list])
+valid_vec = np.array([index_array(x[:(MAX_SEQUENCE_LENGTH - 1)],
+                                  MAX_SEQUENCE_LENGTH, EMBEDDING_DIM) for x in valid_list])
 
 ACCearlyStopping = EarlyStopping(
-    monitor='val_acc', patience=50, verbose=0, mode='auto')
+        monitor='val_acc', patience=50, verbose=0, mode='auto')
 checkpoint = ModelCheckpoint(
-    filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
-
+        filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 model = buildmodel()
-train_history = model.fit(x_train, y_train, verbose=2,
-                          batch_size=batchsize, epochs=num_epoch,
-                          callbacks=[checkpoint, ACCearlyStopping], validation_split=0.1)
-
+train_history = model.fit(train_vec, y_train, verbose=2,
+                          batch_size=2000, epochs=num_epoch,
+                          callbacks=[checkpoint, ACCearlyStopping], validation_split=VALIDATION_SPLIT,
+                          class_weight='auto')
 
 show_train_history(train_history, 'acc', 'val_acc')
-
 show_train_history(train_history, 'loss', 'val_loss')
+
+# Predict model
 model = load_model(
-    'C:/Users/user/Desktop/weight/weights-improvement-03-0.796.hdf5')
-prediction = model.predict_classes(x_test, batch_size=5000)
-
-text = open(predict_path, "w+")
-s = csv.writer(text, delimiter=',', lineterminator='\n')
-s.writerow(["id", "label"])
-for i in range(len(prediction)):
-    s.writerow([i, prediction[i][0]])
-text.close()
-
-'''
-    Start unsupervised learning step
-'''
-valid_predict = model.predict(x_valid, batch_size=10000)
-good_incidence = []
-good_incidence_y = []
-
-
-def prob_to_one_hot(prob):
-    if prob < 0.5:
-        return(0)
-    else:
-        return(1)
-
-
-x_train = preprocess(train_text)
-x_test = preprocess(test_text)
-x_valid = preprocess(valid_text)
-
-for i in range(len(valid_predict)):
-    if abs(valid_predict[i] - 0.5) > 0.45:
-        good_incidence_y.append(prob_to_one_hot(valid_predict[i]))
-        good_incidence.append(list(x_valid[i]))
-        print(i)
-np.save(good_incidence_path, good_incidence)
-y_final = np.concatenate([good_incidence_y, y_train])
-x_final = np.concatenate([good_incidence, x_train])
-
-
-SemiSupervisedModel = buildmodel()
-Finalpath = "c:/Users/user/Desktop/weight/Model-{epoch:02d}-{val_acc:.3f}.hdf5"
-Finalcheckpoint = ModelCheckpoint(
-    Finalpath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
-
-train_history = SemiSupervisedModel.fit(x_final, y_final, verbose=2,
-                                        batch_size=batchsize, epochs=6,
-                                        callbacks=[Finalcheckpoint, ACCearlyStopping], validation_split=0.1)
-
-Finalpath = "c:/Users/user/Desktop/weight/Model-03-0.811.hdf5"
-SemiSupervisedModel = load_model(
-    "c:/Users/user/Desktop/weight/Model-03-0.811.hdf5")
-prediction = SemiSupervisedModel.predict_classes(x_test, batch_size=10000)
-
-text = open(predict_path, "w+")
-s = csv.writer(text, delimiter=',', lineterminator='\n')
-s.writerow(["id", "label"])
-for i in range(len(prediction)):
-    s.writerow([i, prediction[i][0]])
-text.close()
+        'c:/Users/user/Desktop/weight/weights-improvement-12-0.814.hdf5')
+prediction = model.predict_classes(test_vec, batch_size=5000)
+write_result(prediction)
