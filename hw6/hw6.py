@@ -1,13 +1,12 @@
-import sys
 import csv
+import sys
+
+import keras
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
-import keras
 from keras.layers import Dense, Input
-from keras.models import Model
-import numpy as np
-from keras.models import load_model
+from keras.models import Model, load_model
+from sklearn.cluster import KMeans
 
 '''
 image_path = 'C:/Users/user/Desktop/image.npy'
